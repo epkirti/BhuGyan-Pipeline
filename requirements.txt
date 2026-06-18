@@ -22,9 +22,9 @@ trafilatura==2.0.0
 # ---- Embeddings / dedup (optional heavy dep; pipeline falls back if absent) ----
 # sentence-transformers==3.3.1   # BGE-M3 embeddings. Uncomment for real semantic dedup.
 
-# ---- LLM (optional; pipeline falls back to a deterministic stub if absent) ----
+# ---- LLM (Groq live calls; pipeline falls back to a deterministic stub if absent) ----
+groq==0.13.0
 # langchain-groq==0.2.1
-# groq==0.13.0
 
 # ---- Async workers (P4 cron) ----
 arq==0.26.1
