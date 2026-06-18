@@ -1,0 +1,7 @@
+body,unit_type,subject,place_names,exam_tags,class_levels,difficulty,depth_levels,locale
+"The Ganga is the longest river in India, flowing through Madhya Pradesh and Maharashtra.",fact,geography,Ganga|Maharashtra,upsc|ssc,class_10,2,beginner|intermediate,en
+"Rajasthan is the largest state in India by area.",fact,geography,Rajasthan|India,upsc,class_9,1,beginner,en
+"Mumbai, the capital of Maharashtra, is India's financial centre.",fact,geography,Maharashtra|Mumbai,ssc,class_8,2,beginner,en
+"The Ganga is the longest river in India, flowing through Madhya Pradesh and Maharashtra.",fact,geography,Ganga,upsc,class_10,2,beginner,en
+"This fact has no place at all and should fail validation.",fact,geography,,upsc,class_10,1,beginner,en
+"गंगा भारत की सबसे लंबी नदी है।",fact,geography,Ganga|India,upsc,class_10,2,beginner,hi

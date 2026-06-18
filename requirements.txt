@@ -1,0 +1,35 @@
+# ---- Core ----
+asyncpg==0.30.0
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+rich==13.9.4            # live step-by-step pipeline visibility
+typer==0.12.5          # CLI
+
+# ---- Geo (Pipeline 1: Places) ----
+geopandas==1.0.1
+shapely==2.0.6
+pyproj==3.7.0
+
+# ---- Content / Questions (P2, P3) ----
+PyMuPDF==1.24.13       # imported as `fitz` (PDF extraction)
+rapidfuzz==3.10.1      # place-name fuzzy resolution
+
+# ---- Current Affairs (P4) ----
+feedparser==6.0.11
+trafilatura==2.0.0
+
+# ---- Embeddings / dedup (optional heavy dep; pipeline falls back if absent) ----
+# sentence-transformers==3.3.1   # BGE-M3 embeddings. Uncomment for real semantic dedup.
+
+# ---- LLM (optional; pipeline falls back to a deterministic stub if absent) ----
+# langchain-groq==0.2.1
+# groq==0.13.0
+
+# ---- Async workers (P4 cron) ----
+arq==0.26.1
+redis==5.2.0
+
+# ---- Dev ----
+pytest==8.3.3
+pytest-asyncio==0.24.0

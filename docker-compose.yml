@@ -1,0 +1,32 @@
+services:
+  db:
+    # PostGIS base image + pgvector installed via db/Dockerfile.
+    # pg_trgm ships with Postgres core. All three are CREATE EXTENSION'd
+    # by the init migration (001_extensions.sql).
+    build:
+      context: ./db
+    image: bhugyan-postgis-pgvector:16-3.4
+    container_name: bhugyan-db
+    environment:
+      POSTGRES_USER: bhugyan
+      POSTGRES_PASSWORD: bhugyan
+      POSTGRES_DB: bhugyan
+    ports:
+      # Host 5433 -> container 5432 to avoid clashing with a local Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - bhugyan_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bhugyan -d bhugyan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: bhugyan-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  bhugyan_pgdata:
