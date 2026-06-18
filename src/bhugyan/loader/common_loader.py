@@ -59,9 +59,11 @@ class CommonLoader:
                 for u in unresolved:
                     st.note(f"unresolved: '{u['name']}' "
                             f"(best {u['best_match']}@{u['best_score']:.0f})")
-                if not resolved:
+                if not resolved and not it.place_optional:
                     st.skip("no place resolved")
                     continue
+                # place_optional items (PYQs) load even with zero resolved places —
+                # they just get no place_content links.
                 resolvable.append((it, vec, resolved))
                 st.ok()
 

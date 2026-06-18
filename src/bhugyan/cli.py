@@ -68,9 +68,18 @@ def run(
     source: str = typer.Option(None, help="input file (geojson/csv/pdf)"),
     mode: str = typer.Option(None, help="pipeline-specific mode"),
     out: str = typer.Option(None, help="output dir (p5)"),
+    exam: str = typer.Option(None, help="exam tag, e.g. 'upsc' (p3 --mode qbank)"),
+    year: str = typer.Option(None, help="exam year, e.g. '2021' (p3 --mode qbank)"),
+    paper: str = typer.Option(None, help="paper id, e.g. 'map_based_questions' (p3 --mode qbank)"),
+    qtype: str = typer.Option(None, help="question type: practice|pyq (p3 --mode qbank)"),
+    map_only: bool = typer.Option(False, "--map-only", help="keep only questions about a place (p3 --mode qbank)"),
+    chunk: int = typer.Option(None, help="pages per LLM call (PDF modes)"),
+    pages: int = typer.Option(None, help="limit to first N pages (PDF modes)"),
 ):
     """Run one pipeline with live step-by-step visibility."""
-    asyncio.run(_run_one(pipeline.lower(), source=source, mode=mode, out=out))
+    asyncio.run(_run_one(pipeline.lower(), source=source, mode=mode, out=out,
+                         exam=exam, year=year, paper=paper, qtype=qtype,
+                         map_only=map_only or None, chunk=chunk, pages=pages))
 
 
 async def _run_one(pid: str, **opts):
@@ -84,6 +93,44 @@ async def _run_one(pid: str, **opts):
         await pipe.run()
     finally:
         await conn.close()
+
+
+@app.command()
+def extract(
+    source: str = typer.Option(..., help="input book PDF"),
+    out: str = typer.Option("data/extracted/content.csv", help="output CSV path"),
+    subject: str = typer.Option("geography", help="default subject"),
+    exam: str = typer.Option(None, help="default exam tag(s), e.g. 'upsc|ssc'"),
+    class_level: str = typer.Option(None, help="default class level, e.g. 'class_11'"),
+    locale: str = typer.Option("en", help="default locale"),
+    chunk: int = typer.Option(2, help="pages per LLM call"),
+    pages: int = typer.Option(None, help="limit to first N pages (cheap test run)"),
+):
+    """Extract draft facts from a book PDF into a P2-ready CSV (review before loading)."""
+    from .extract import pdf_to_csv
+
+    def _split(v):
+        return [p.strip() for p in v.replace(";", "|").split("|") if p.strip()] if v else []
+
+    typer.secho(f"Extracting facts from {source} …", fg="cyan")
+    summary = pdf_to_csv(
+        source, out,
+        subject=subject,
+        exam_tags=_split(exam),
+        class_levels=_split(class_level),
+        locale=locale,
+        pages_per_chunk=chunk,
+        page_limit=pages,
+        on_progress=lambda m: typer.echo(f"  · {m}"),
+    )
+    typer.secho(
+        f"✓ {summary['facts_written']} facts -> {summary['csv']}  "
+        f"(LLM: {summary['llm']})", fg="green")
+    if summary["facts_without_place"]:
+        typer.secho(
+            f"  ⚠ {summary['facts_without_place']} fact(s) have NO place_names — "
+            f"P2 will reject these; add places during review.", fg="yellow")
+    typer.echo(f"  Review the CSV, then:  python -m bhugyan run p2 --source {out}")
 
 
 @app.command()

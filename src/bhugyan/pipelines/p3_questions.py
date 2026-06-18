@@ -20,15 +20,15 @@ class QuestionsPipeline(Pipeline):
     label = "Questions"
 
     async def run(self) -> dict:
-        mode = self.opts.get("mode", "drills")     # drills | mcq | pyq
+        mode = self.opts.get("mode", "drills")     # drills | mcq | qbank
         run = self.new_run(meta={"mode": mode,
                                  "llm": "live (Groq)" if llm.is_live else "stub (offline)"})
 
         with run.step("Step 1 — Generate") as st:
             if mode == "mcq":
                 items = await self._gen_mcqs(st)
-            elif mode == "pyq":
-                items = self._gen_pyqs(st)
+            elif mode in ("qbank", "pyq", "practice"):
+                items = self._gen_question_bank(st)
             else:
                 items = await self._gen_map_drills(st)
 
@@ -90,9 +90,78 @@ class QuestionsPipeline(Pipeline):
         st.note(f"{len(facts)} facts -> {len(items)} MCQs (pending_review)")
         return items
 
-    # ---- PYQ extraction (skeleton) ----
-    def _gen_pyqs(self, st) -> list[NormalizedItem]:
-        st.note("PYQ extraction skeleton: PyMuPDF reads exam PDF, LLM extracts "
-                "Q + options + answer key. Supply --source <pdf>.")
-        st.set_in(0)
-        return []
+    # ---- Question-bank extraction (institute PDF -> tagged map MCQs) ----
+    def _gen_question_bank(self, st) -> list[NormalizedItem]:
+        from pathlib import Path
+
+        from ..extract.question_bank import extract_question_bank
+        from ..loader.validate import VALID_SUBJECTS
+
+        source = self.opts.get("source")
+        if not source or not Path(source).exists():
+            st.note("supply a PDF: run p3 --mode qbank --source <pdf> "
+                    "--exam upsc --year 2021 --paper map_based_questions")
+            st.set_in(0)
+            return []
+
+        exam = self.opts.get("exam") or "upsc"
+        cli_year = str(self.opts.get("year") or "").strip()
+        paper = (self.opts.get("paper") or "").strip()
+        qtype = (self.opts.get("qtype") or "practice").strip()   # practice | pyq
+        map_only = bool(self.opts.get("map_only"))               # opt-in place filter
+        chunk = int(self.opts.get("chunk") or 2)
+        page_limit = int(self.opts["pages"]) if self.opts.get("pages") else None
+
+        questions = extract_question_bank(
+            source, pages_per_chunk=chunk, page_limit=page_limit,
+            on_progress=lambda m: st.note(m))
+
+        items: list[NormalizedItem] = []
+        dropped_no_place = unanswered = 0
+        for q in questions:
+            if map_only and not q["place_names"]:   # keep map-relevant only (opt-in)
+                dropped_no_place += 1
+                continue
+            # the question's own section year wins over the --year flag
+            year = str(q.get("year") or cli_year or "").strip()
+            extra = [("source_type", qtype)]
+            if year:
+                extra.append(("exam_year", year))
+            if paper:
+                extra.append(("paper", paper))
+            has_answer = q["correct_index"] is not None
+            if not has_answer:
+                unanswered += 1
+            diff = q["difficulty"]
+            subject = q["subject"] if q["subject"] in VALID_SUBJECTS else "geography"
+            items.append(NormalizedItem(
+                body=q["stem"],
+                unit_type="mcq",
+                subject=subject,
+                place_names=q["place_names"],
+                exam_tags=[exam],
+                extra_tags=extra,
+                difficulty=int(diff) if isinstance(diff, (int, float))
+                and 1 <= int(diff) <= 5 else None,
+                place_optional=True,          # places may not be in the map yet
+                # answered -> trusted; unanswered -> human fills the answer
+                status="published" if has_answer else "pending_review",
+                source_pipeline="p3",
+                payload={
+                    "options": q["options"],
+                    "correct_index": q["correct_index"],   # None if no answer key
+                    "answer_known": has_answer,
+                    "source": "question_bank",
+                    "exam": exam, "year": year, "paper": paper, "qtype": qtype,
+                    "q_number": q["number"],
+                    # keep the places even if they don't resolve to the map yet,
+                    # so they're not lost and can be re-resolved later.
+                    "place_names_raw": q["place_names"],
+                },
+            ))
+        st.set_in(len(items))
+        st.ok(len(items))
+        st.note(f"{len(questions)} extracted -> {len(items)} kept "
+                f"({dropped_no_place} dropped: no place); "
+                f"{unanswered} without answer key (pending_review)")
+        return items

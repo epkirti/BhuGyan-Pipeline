@@ -23,6 +23,12 @@ class NormalizedItem(BaseModel):
     status: str = "draft"                            # draft|pending_review|published
     source_pipeline: str | None = None               # p1..p5
     payload: dict[str, Any] = Field(default_factory=dict)  # options/correct_index, url, etc.
+    # Place-first is the default: every item must link to >=1 place. PYQs opt out
+    # (most exam questions are not about places) so they load with full coverage.
+    place_optional: bool = False
+    # Arbitrary extra (tag_type, tag_value) rows beyond the fixed lists above —
+    # e.g. ("exam_year", "2023"), ("paper", "prelims_gs1") for PYQs.
+    extra_tags: list[tuple[str, str]] = Field(default_factory=list)
 
     def tag_pairs(self) -> list[tuple[str, str]]:
         """Flatten the tag lists into (tag_type, tag_value) rows for content_tags."""
@@ -35,4 +41,6 @@ class NormalizedItem(BaseModel):
             pairs.append(("layer", v))
         for v in self.scopes:
             pairs.append(("scope", v))
+        for tag_type, tag_value in self.extra_tags:
+            pairs.append((tag_type, tag_value))
         return pairs
