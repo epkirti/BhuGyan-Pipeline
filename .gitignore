@@ -7,6 +7,10 @@ run_logs/
 *.log
 data/raw/
 data/downloads/
+data/books/
+data/extracted/
+data/sample/test_*.pdf
+output/
 *.pmtiles
 .pytest_cache/
 .DS_Store

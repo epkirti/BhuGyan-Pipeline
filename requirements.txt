@@ -5,6 +5,7 @@ pydantic-settings==2.6.1
 python-dotenv==1.0.1
 rich==13.9.4            # live step-by-step pipeline visibility
 typer==0.12.5          # CLI
+click==8.1.8           # pin: typer 0.12.5 breaks on click>=8.2 (make_metavar signature change)
 
 # ---- Geo (Pipeline 1: Places) ----
 geopandas==1.0.1
